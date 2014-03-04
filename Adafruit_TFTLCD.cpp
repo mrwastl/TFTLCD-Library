@@ -13,6 +13,10 @@
 #ifdef __AVR__
 	#include <avr/pgmspace.h>
 #endif
+#if defined(__MK20DX128__) || defined(__MK20DX256__)
+  #include <avr/pgmspace.h>
+#endif
+
 #include "pins_arduino.h"
 #include "wiring_private.h"
 #include "Adafruit_TFTLCD.h"
@@ -91,18 +95,24 @@
 // Constructor for breakout board (configurable LCD control lines).
 // Can still use this w/shield, but parameters are ignored.
 Adafruit_TFTLCD::Adafruit_TFTLCD(
-  uint8_t cs, uint8_t cd, uint8_t wr, uint8_t rd, uint8_t reset) :
+  uint8_t cs, uint8_t cd, uint8_t wr, uint8_t rd, uint8_t rst) :
   Adafruit_GFX(TFTWIDTH, TFTHEIGHT) {
 
 #ifndef USE_ADAFRUIT_SHIELD_PINOUT
   // Convert pin numbers to registers and bitmasks
-  _reset     = reset;
+  _reset     = rst;
   #ifdef __AVR__
     csPort     = portOutputRegister(digitalPinToPort(cs));
     cdPort     = portOutputRegister(digitalPinToPort(cd));
     wrPort     = portOutputRegister(digitalPinToPort(wr));
     rdPort     = portOutputRegister(digitalPinToPort(rd));
   #endif
+  #if defined(__MK20DX128__) || defined(__MK20DX256__)
+    csPort     = portOutputRegister(digitalPinToPort(cs));
+    cdPort     = portOutputRegister(digitalPinToPort(cd));
+    wrPort     = portOutputRegister(digitalPinToPort(wr));
+    rdPort     = portOutputRegister(digitalPinToPort(rd));
+  #endif  
   #if defined(__SAM3X8E__)
     csPort     = digitalPinToPort(cs);
     cdPort     = digitalPinToPort(cd);
@@ -123,6 +133,13 @@ Adafruit_TFTLCD::Adafruit_TFTLCD(
     *wrPort   |=  wrPinSet;
     *rdPort   |=  rdPinSet;
   #endif
+
+  #ifdef defined(__MK20DX128__) || defined(__MK20DX256__)
+    *csPort   |=  csPinSet; // Set all control bits to HIGH (idle)
+    *cdPort   |=  cdPinSet; // Signals are ACTIVE LOW
+    *wrPort   |=  wrPinSet;
+    *rdPort   |=  rdPinSet;
+  #endif
   #if defined(__SAM3X8E__)
     csPort->PIO_SODR  |=  csPinSet; // Set all control bits to HIGH (idle)
     cdPort->PIO_SODR  |=  cdPinSet; // Signals are ACTIVE LOW
@@ -133,9 +150,13 @@ Adafruit_TFTLCD::Adafruit_TFTLCD(
   pinMode(cd, OUTPUT);
   pinMode(wr, OUTPUT);
   pinMode(rd, OUTPUT);
-  if(reset) {
-    digitalWrite(reset, HIGH);
-    pinMode(reset, OUTPUT);
+  digitalWrite(cs, HIGH);
+  digitalWrite(cd, HIGH);
+  digitalWrite(wr, HIGH);
+  digitalWrite(rd, HIGH);
+  if(rst) {
+    digitalWrite(rst, HIGH);
+    pinMode(rst, OUTPUT);
   }
 #endif
 
@@ -328,14 +349,18 @@ void Adafruit_TFTLCD::reset(void) {
   RD_IDLE;
 
 #ifdef USE_ADAFRUIT_SHIELD_PINOUT
+  pinMode(5, OUTPUT);
   digitalWrite(5, LOW);
   delay(2);
   digitalWrite(5, HIGH);
+  delay(2);
 #else
   if(_reset) {
+    pinMode(_reset, OUTPUT);
     digitalWrite(_reset, LOW);
     delay(2);
     digitalWrite(_reset, HIGH);
+    delay(2);
   }
 #endif
 
@@ -343,8 +368,9 @@ void Adafruit_TFTLCD::reset(void) {
   CS_ACTIVE;
   CD_COMMAND;
   write8(0x00);
-  for(uint8_t i=0; i<3; i++) WR_STROBE; // Three extra 0x00s
+  for(uint8_t i=0; i<7; i++) WR_STROBE; // Seven extra 0x00s
   CS_IDLE;
+  //delay(100);
 }
 
 // Sets the LCD address window (and address counter, on 932X).
@@ -438,8 +464,12 @@ void Adafruit_TFTLCD::flood(uint16_t color, uint32_t len) {
 
   CS_ACTIVE;
   CD_COMMAND;
-  if(driver == ID_932X) write8(0x00); // High byte of GRAM register...
-  write8(0x22); // Write data to GRAM
+  if(driver == ID_932X) {
+    write8(0x00); // High byte of GRAM register...
+    write8(0x22); // Write data to GRAM
+  } else {
+    write8(0x22); // Write data to GRAM
+  }
 
   // Write first pixel normally, decrement counter by 1
   CD_DATA;
@@ -683,7 +713,7 @@ void Adafruit_TFTLCD::setRotation(uint8_t x) {
     // For 932X, init default full-screen address window:
     setAddrWindow(0, 0, _width - 1, _height - 1); // CS_IDLE happens here
 
-  } if(driver == ID_7575) {
+  } else  if(driver == ID_7575) {
 
     uint8_t t;
     switch(rotation) {

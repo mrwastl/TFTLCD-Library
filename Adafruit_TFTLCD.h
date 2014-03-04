@@ -89,6 +89,12 @@ class Adafruit_TFTLCD : public Adafruit_GFX {
 					  csPinUnset,  cdPinUnset,  wrPinUnset,  rdPinUnset,
 					  _reset;
   #endif
+  #if defined(__MK20DX128__) || defined(__MK20DX256__)
+    volatile uint8_t *csPort    , *cdPort    , *wrPort    , *rdPort;
+  uint8_t           csPinSet  ,  cdPinSet  ,  wrPinSet  ,  rdPinSet  ,
+            csPinUnset,  cdPinUnset,  wrPinUnset,  rdPinUnset,
+            _reset;
+  #endif          
   
 #endif
 };
