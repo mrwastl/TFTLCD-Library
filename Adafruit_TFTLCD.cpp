@@ -13,9 +13,6 @@
 #ifdef __AVR__
 	#include <avr/pgmspace.h>
 #endif
-#if defined(__MK20DX128__) || defined(__MK20DX256__)
-  #include <avr/pgmspace.h>
-#endif
 
 #include "pins_arduino.h"
 #include "wiring_private.h"
@@ -351,16 +348,16 @@ void Adafruit_TFTLCD::reset(void) {
 #ifdef USE_ADAFRUIT_SHIELD_PINOUT
   pinMode(5, OUTPUT);
   digitalWrite(5, LOW);
-  delay(2);
+  delay(1);
   digitalWrite(5, HIGH);
-  delay(2);
+  delay(1);
 #else
   if(_reset) {
     pinMode(_reset, OUTPUT);
     digitalWrite(_reset, LOW);
-    delay(2);
+    delay(1);
     digitalWrite(_reset, HIGH);
-    delay(2);
+    delay(1);
   }
 #endif
 
@@ -368,7 +365,7 @@ void Adafruit_TFTLCD::reset(void) {
   CS_ACTIVE;
   CD_COMMAND;
   write8(0x00);
-  for(uint8_t i=0; i<7; i++) WR_STROBE; // Seven extra 0x00s
+  for(uint8_t i=0; i<3; i++) WR_STROBE; // three extra 0x00s
   CS_IDLE;
   //delay(100);
 }

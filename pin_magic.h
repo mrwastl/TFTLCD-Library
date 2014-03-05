@@ -352,14 +352,15 @@
 
 // copy and paste of ZTiK.nl's code from http://forum.pjrc.com/threads/16798-2-8-quot-TFT-touchscreen-Teensy-3-0?p=21431&viewfull=1#post21431
 
-// My mix of original Uno code, Paul Stoffregen's code and a cenversion to GPIO pin/port mapping, id checks out, no display on screen
+// My mix of original Uno code, Paul Stoffregen's code and a conversion to GPIO pin/port mapping, id checks out, no display on screen
 // LCD Data Bit :   7   6   5   4   3   2   1   0
 // T3 dig. pin  :   5  21  20   6   8   7  14   2
 // T3 port/pin  : PD7 PD6 PD5 PD4 PD3 PD2 PD1 PD0
 
   // GPIO conversion thanks to immortalSpirit!
   #define write8inline(d) { GPIOD_PDOR = (d); WR_STROBE; }
-  #define read8inline(result) (RD_ACTIVE, delayMicroseconds(1), result = GPIOD_PDIR, RD_IDLE)
+  #define read8inline(result) (RD_ACTIVE, delayMicroseconds(1), result = GPIOD_PDIR, RD_IDLE) 
+  // delay must be at least 400ns, delayMicroseconds(1) is the easy way to do this   
 
   // does work, thank you Paul!
   #define setWriteDirInline() { \
