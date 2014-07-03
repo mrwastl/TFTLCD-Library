@@ -33,12 +33,12 @@
 // Constructor for breakout board (configurable LCD control lines).
 // Can still use this w/shield, but parameters are ignored.
 Adafruit_TFTLCD::Adafruit_TFTLCD(
-  uint8_t cs, uint8_t cd, uint8_t wr, uint8_t rd, uint8_t reset) :
+  uint8_t cs, uint8_t cd, uint8_t wr, uint8_t rd, uint8_t rst) :
   Adafruit_GFX(TFTWIDTH, TFTHEIGHT) {
 
 #ifndef USE_ADAFRUIT_SHIELD_PINOUT
   // Convert pin numbers to registers and bitmasks
-  _reset     = reset;
+  _reset     = rst;
   #ifdef __AVR__
     csPort     = portOutputRegister(digitalPinToPort(cs));
     cdPort     = portOutputRegister(digitalPinToPort(cd));
@@ -50,7 +50,7 @@ Adafruit_TFTLCD::Adafruit_TFTLCD(
     cdPort     = portOutputRegister(digitalPinToPort(cd));
     wrPort     = portOutputRegister(digitalPinToPort(wr));
     rdPort     = portOutputRegister(digitalPinToPort(rd));
-  #endif
+  #endif  
   #if defined(__SAM3X8E__)
     csPort     = digitalPinToPort(cs);
     cdPort     = digitalPinToPort(cd);
@@ -322,8 +322,9 @@ void Adafruit_TFTLCD::reset(void) {
   if(_reset) {
     pinMode(_reset, OUTPUT);
     digitalWrite(_reset, LOW);
-    delay(2);
+    delay(1);
     digitalWrite(_reset, HIGH);
+    delay(1);
   }
 #endif
 
@@ -439,9 +440,13 @@ void Adafruit_TFTLCD::flood(uint16_t color, uint32_t len) {
 
   CS_ACTIVE;
   CD_COMMAND;
+<<<<<<< HEAD
+  if(driver == ID_932X) {
+=======
   if (driver == ID_9341) {
     write8(0x2C);
   } else if (driver == ID_932X) {
+>>>>>>> upstream/master
     write8(0x00); // High byte of GRAM register...
     write8(0x22); // Write data to GRAM
   } else {
@@ -704,8 +709,12 @@ void Adafruit_TFTLCD::setRotation(uint8_t x) {
     // For 932X, init default full-screen address window:
     setAddrWindow(0, 0, _width - 1, _height - 1); // CS_IDLE happens here
 
+<<<<<<< HEAD
+  } else  if(driver == ID_7575) {
+=======
   }
  if(driver == ID_7575) {
+>>>>>>> upstream/master
 
     uint8_t t;
     switch(rotation) {
