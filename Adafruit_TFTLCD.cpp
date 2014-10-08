@@ -96,9 +96,9 @@ Adafruit_TFTLCD::Adafruit_TFTLCD(
   digitalWrite(cd, HIGH);
   digitalWrite(wr, HIGH);
   digitalWrite(rd, HIGH);
-  if(rst) {
-    digitalWrite(rst, HIGH);
-    pinMode(rst, OUTPUT);
+  if(reset) {
+    digitalWrite(reset, HIGH);
+    pinMode(reset, OUTPUT);
   }
 #endif
 
