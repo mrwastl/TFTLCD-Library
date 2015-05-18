@@ -38,6 +38,7 @@
 // Mega port/pin:  PH4  PH3  PB7  PG5  PB5  PB4  PH6  PH5
 // Leo port/pin :  PE6  PD7  PC7  PD4  PB7  PB6  PB5  PB4
 // Due port/pin : PC23 PC24 PB27 PC26  PD7 PC29 PC21 PC22
+
 // Breakout pin usage:
 // LCD Data Bit :   7   6   5   4   3   2   1   0
 // Uno dig. pin :   7   6   5   4   3   2   9   8
@@ -48,6 +49,8 @@
 // Leo port/pin : PE6 PD7 PC6 PD4 PD0 PD1 PB5 PB4
 // Due dig. pin :  40  39  38  37  36  35  34  33
 // Due port/pin : PC8 PC7 PC6 PC5 PC4 PC3 PC2 PC1 (one contiguous PORT. -ish…)
+// T3 dig. pin  :   5  21  20   6   8   7  14   2
+// T3 port/pin  : PD7 PD6 PD5 PD4 PD3 PD2 PD1 PD0
 
 // Pixel read operations require a minimum 400 nS delay from RD_ACTIVE
 // to polling the input pins.  At 16 MHz, one machine cycle is 62.5 nS.
@@ -279,7 +282,7 @@
    PIO_Clear(PIOB, (((~d) & 0x20)<<(27-5))); \
    WR_STROBE; }
 
-  #define read8inline(result) { \    
+  #define read8inline(result) { \
    RD_ACTIVE;   \
    delayMicroseconds(1);      \
    result = (((PIOC->PIO_PDSR & (1<<23)) >> (23-7)) | ((PIOC->PIO_PDSR & (1<<24)) >> (24-6)) | \
@@ -344,7 +347,49 @@
 
  #endif
 
+#elif defined(__MK20DX128__) || defined(__MK20DX256__)
+// Teensy 3.0 & Teensy 3.1
 
+// copy and paste of ZTiK.nl's code from http://forum.pjrc.com/threads/16798-2-8-quot-TFT-touchscreen-Teensy-3-0?p=21431&viewfull=1#post21431
+
+// My mix of original Uno code, Paul Stoffregen's code and a conversion to GPIO pin/port mapping, id checks out, no display on screen
+// LCD Data Bit :   7   6   5   4   3   2   1   0
+// T3 dig. pin  :   5  21  20   6   8   7  14   2
+// T3 port/pin  : PD7 PD6 PD5 PD4 PD3 PD2 PD1 PD0
+
+  // GPIO conversion thanks to immortalSpirit!
+  #define write8inline(d) { GPIOD_PDOR = (d); WR_STROBE; }
+  #define read8inline(result) (RD_ACTIVE, delayMicroseconds(1), result = GPIOD_PDIR, RD_IDLE) 
+  // delay must be at least 400ns, delayMicroseconds(1) is the easy way to do this   
+
+  // does work, thank you Paul!
+  #define setWriteDirInline() { \
+    pinMode(2, OUTPUT); \
+    pinMode(14, OUTPUT); \
+    pinMode(7, OUTPUT); \
+    pinMode(8, OUTPUT); \
+    pinMode(6, OUTPUT); \
+    pinMode(20, OUTPUT); \
+    pinMode(21, OUTPUT); \
+    pinMode(5, OUTPUT); }
+  #define setReadDirInline() { \
+    pinMode(2, INPUT); \
+    pinMode(14, INPUT); \
+    pinMode(7, INPUT); \
+    pinMode(8, INPUT); \
+    pinMode(6, INPUT); \
+    pinMode(20, INPUT); \
+    pinMode(21, INPUT); \
+    pinMode(5, INPUT); }
+
+  // MEGA macro's !!!
+  #define write8            write8inline
+//  #define read8             read8inline
+  #define setWriteDir       setWriteDirInline
+  #define setReadDir        setReadDirInline
+  #define writeRegister8    writeRegister8inline
+  #define writeRegister16   writeRegister16inline
+  #define writeRegisterPair writeRegisterPairInline
 #else
 
  #error "Board type unsupported / not recognized"

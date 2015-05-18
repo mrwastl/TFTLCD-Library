@@ -13,16 +13,16 @@
 #ifdef __AVR__
 	#include <avr/pgmspace.h>
 #endif
-#include "pins_arduino.h"
-#include "wiring_private.h"
+//#include "pins_arduino.h"
+//#include "wiring_private.h"
 #include "Adafruit_TFTLCD.h"
 #include "pin_magic.h"
 
 //#define TFTWIDTH   320
 //#define TFTHEIGHT  480
 
-#define TFTWIDTH   240
-#define TFTHEIGHT  320
+//#define TFTWIDTH   240
+//#define TFTHEIGHT  320
 
 // LCD controller chip identifiers
 #define ID_932X    0
@@ -36,9 +36,10 @@
 // Constructor for breakout board (configurable LCD control lines).
 // Can still use this w/shield, but parameters are ignored.
 Adafruit_TFTLCD::Adafruit_TFTLCD(
-  uint8_t cs, uint8_t cd, uint8_t wr, uint8_t rd, uint8_t reset) :
-  Adafruit_GFX(TFTWIDTH, TFTHEIGHT) {
-
+  uint8_t cs, uint8_t cd, uint8_t wr, uint8_t rd, uint8_t reset, int16_t w, int16_t h) :
+  Adafruit_GFX(w, h) {
+  _w = w;
+  _h = h;
 #ifndef USE_ADAFRUIT_SHIELD_PINOUT
   // Convert pin numbers to registers and bitmasks
   _reset     = reset;
@@ -48,6 +49,12 @@ Adafruit_TFTLCD::Adafruit_TFTLCD(
     wrPort     = portOutputRegister(digitalPinToPort(wr));
     rdPort     = portOutputRegister(digitalPinToPort(rd));
   #endif
+#if defined(__MK20DX128__) || defined(__MK20DX256__)
+  csPort     = portOutputRegister(digitalPinToPort(cs));
+  cdPort     = portOutputRegister(digitalPinToPort(cd));
+  wrPort     = portOutputRegister(digitalPinToPort(wr));
+  rdPort     = portOutputRegister(digitalPinToPort(rd));
+#endif
   #if defined(__SAM3X8E__)
     csPort     = digitalPinToPort(cs);
     cdPort     = digitalPinToPort(cd);
@@ -68,6 +75,12 @@ Adafruit_TFTLCD::Adafruit_TFTLCD(
     *wrPort   |=  wrPinSet;
     *rdPort   |=  rdPinSet;
   #endif
+#if defined(__MK20DX128__) || defined(__MK20DX256__)
+  *csPort   |=  csPinSet; // Set all control bits to HIGH (idle)
+  *cdPort   |=  cdPinSet; // Signals are ACTIVE LOW
+  *wrPort   |=  wrPinSet;
+  *rdPort   |=  rdPinSet;
+#endif
   #if defined(__SAM3X8E__)
     csPort->PIO_SODR  |=  csPinSet; // Set all control bits to HIGH (idle)
     cdPort->PIO_SODR  |=  cdPinSet; // Signals are ACTIVE LOW
@@ -78,6 +91,10 @@ Adafruit_TFTLCD::Adafruit_TFTLCD(
   pinMode(cd, OUTPUT);
   pinMode(wr, OUTPUT);
   pinMode(rd, OUTPUT);
+  digitalWrite(cs, HIGH);
+  digitalWrite(cd, HIGH);
+  digitalWrite(wr, HIGH);
+  digitalWrite(rd, HIGH);
   if(reset) {
     digitalWrite(reset, HIGH);
     pinMode(reset, OUTPUT);
@@ -88,7 +105,9 @@ Adafruit_TFTLCD::Adafruit_TFTLCD(
 }
 
 // Constructor for shield (fixed LCD control lines)
-Adafruit_TFTLCD::Adafruit_TFTLCD(void) : Adafruit_GFX(TFTWIDTH, TFTHEIGHT) {
+Adafruit_TFTLCD::Adafruit_TFTLCD(int16_t w, int16_t h) : Adafruit_GFX(w, h) {
+  _w = w;
+  _h = h;
   init();
 }
 
@@ -114,8 +133,8 @@ void Adafruit_TFTLCD::init(void) {
   cursor_y  = cursor_x = 0;
   textsize  = 1;
   textcolor = 0xFFFF;
-  _width    = TFTWIDTH;
-  _height   = TFTHEIGHT;
+  _width    = _w; //TFTWIDTH;
+  _height   = _h; //TFTHEIGHT;
 }
 
 // Initialization command tables for different LCD controllers
@@ -267,7 +286,7 @@ void Adafruit_TFTLCD::begin(uint16_t id) {
       else                  writeRegister16(a, d);
     }
     setRotation(rotation);
-    setAddrWindow(0, 0, TFTWIDTH-1, TFTHEIGHT-1);
+    setAddrWindow(0, 0, _w-1, _h-1);
 
   } else if (id == 0x9341) {
 
@@ -293,7 +312,7 @@ void Adafruit_TFTLCD::begin(uint16_t id) {
     delay(150);
     writeRegister8(ILI9341_DISPLAYON, 0);
     delay(500);
-    setAddrWindow(0, 0, TFTWIDTH-1, TFTHEIGHT-1);
+    setAddrWindow(0, 0, _w-1, _h-1);
     return;
 
   } else if (id == 0x8357) {
@@ -351,11 +370,14 @@ void Adafruit_TFTLCD::reset(void) {
   RD_IDLE;
 
 #ifdef USE_ADAFRUIT_SHIELD_PINOUT
+  pinMode(5, OUTPUT);
   digitalWrite(5, LOW);
-  delay(2);
+  delay(1);
   digitalWrite(5, HIGH);
+  delay(1);
 #else
   if(_reset) {
+    pinMode(_reset, OUTPUT);
     digitalWrite(_reset, LOW);
     delay(2);
     digitalWrite(_reset, HIGH);
@@ -366,8 +388,9 @@ void Adafruit_TFTLCD::reset(void) {
   CS_ACTIVE;
   CD_COMMAND;
   write8(0x00);
-  for(uint8_t i=0; i<3; i++) WR_STROBE; // Three extra 0x00s
+  for(uint8_t i=0; i<3; i++) WR_STROBE; // three extra 0x00s
   CS_IDLE;
+  //delay(100);
 }
 
 // Sets the LCD address window (and address counter, on 932X).
@@ -393,28 +416,28 @@ void Adafruit_TFTLCD::setAddrWindow(int x1, int y1, int x2, int y2) {
      case 1:
       t  = y1;
       y1 = x1;
-      x1 = TFTWIDTH  - 1 - y2;
+      x1 = _w  - 1 - y2;
       y2 = x2;
-      x2 = TFTWIDTH  - 1 - t;
+      x2 = _w  - 1 - t;
       x  = x2;
       y  = y1;
       break;
      case 2:
       t  = x1;
-      x1 = TFTWIDTH  - 1 - x2;
-      x2 = TFTWIDTH  - 1 - t;
+      x1 = _w  - 1 - x2;
+      x2 = _w  - 1 - t;
       t  = y1;
-      y1 = TFTHEIGHT - 1 - y2;
-      y2 = TFTHEIGHT - 1 - t;
+      y1 = _h - 1 - y2;
+      y2 = _h - 1 - t;
       x  = x2;
       y  = y2;
       break;
      case 3:
       t  = x1;
       x1 = y1;
-      y1 = TFTHEIGHT - 1 - x2;
+      y1 = _h - 1 - x2;
       x2 = y2;
-      y2 = TFTHEIGHT - 1 - t;
+      y2 = _h - 1 - t;
       x  = x1;
       y  = y2;
       break;
@@ -612,10 +635,10 @@ void Adafruit_TFTLCD::fillScreen(uint16_t color) {
     // fill does not occur top-to-bottom.
     uint16_t x, y;
     switch(rotation) {
-      default: x = 0            ; y = 0            ; break;
-      case 1 : x = TFTWIDTH  - 1; y = 0            ; break;
-      case 2 : x = TFTWIDTH  - 1; y = TFTHEIGHT - 1; break;
-      case 3 : x = 0            ; y = TFTHEIGHT - 1; break;
+      default: x = 0     ; y = 0     ; break;
+      case 1 : x = _w - 1; y = 0     ; break;
+      case 2 : x = _w - 1; y = _h - 1; break;
+      case 3 : x = 0     ; y = _h - 1; break;
     }
     CS_ACTIVE;
     writeRegister16(0x0020, x);
@@ -629,7 +652,7 @@ void Adafruit_TFTLCD::fillScreen(uint16_t color) {
     setAddrWindow(0, 0, _width - 1, _height - 1);
 
   }
-  flood(color, (long)TFTWIDTH * (long)TFTHEIGHT);
+  flood(color, (long)_w * (long)_h);
 }
 
 void Adafruit_TFTLCD::drawPixel(int16_t x, int16_t y, uint16_t color) {
@@ -643,17 +666,17 @@ void Adafruit_TFTLCD::drawPixel(int16_t x, int16_t y, uint16_t color) {
     switch(rotation) {
      case 1:
       t = x;
-      x = TFTWIDTH  - 1 - y;
+      x = _w  - 1 - y;
       y = t;
       break;
      case 2:
-      x = TFTWIDTH  - 1 - x;
-      y = TFTHEIGHT - 1 - y;
+      x = _w  - 1 - x;
+      y = _h - 1 - y;
       break;
      case 3:
       t = x;
       x = y;
-      y = TFTHEIGHT - 1 - t;
+      y = _h - 1 - t;
       break;
     }
     writeRegister16(0x0020, x);
@@ -753,22 +776,26 @@ void Adafruit_TFTLCD::setRotation(uint8_t x) {
     setLR(); // CS_IDLE happens here
   }
 
- if (driver == ID_9341) { 
-   // MEME, HX8357D uses same registers as 9341 but different values
+ if ((driver == ID_9341) /*|| (driver == ID_HX8357D) */ ) { 
+   // MEME, HX8357D uses same registers but different values
    uint16_t t;
 
    switch (rotation) {
    case 2:
-     t = ILI9341_MADCTL_MX | ILI9341_MADCTL_BGR;
+     //t = ILI9341_MADCTL_MX | ILI9341_MADCTL_BGR;
+     t = ILI9341_MADCTL_MX | ILI9341_MADCTL_MY;
      break;
    case 3:
-     t = ILI9341_MADCTL_MV | ILI9341_MADCTL_BGR;
+     //t = ILI9341_MADCTL_MV | ILI9341_MADCTL_BGR;
+     t = ILI9341_MADCTL_MY | ILI9341_MADCTL_MV;
      break;
   case 0:
-    t = ILI9341_MADCTL_MY | ILI9341_MADCTL_BGR;
+    //t = ILI9341_MADCTL_MY | ILI9341_MADCTL_BGR;
+    t = 0;
     break;
    case 1:
-     t = ILI9341_MADCTL_MX | ILI9341_MADCTL_MY | ILI9341_MADCTL_MV | ILI9341_MADCTL_BGR;
+     //t = ILI9341_MADCTL_MX | ILI9341_MADCTL_MY | ILI9341_MADCTL_MV | ILI9341_MADCTL_BGR;
+     t = ILI9341_MADCTL_MX | ILI9341_MADCTL_MV;
      break;
   }
    writeRegister8(ILI9341_MADCTL, t ); // MADCTL
@@ -777,7 +804,7 @@ void Adafruit_TFTLCD::setRotation(uint8_t x) {
   }
   
   if (driver == ID_HX8357D) { 
-    // MEME, HX8357D uses same registers as 9341 but different values
+    // HX8357D uses same registers as 9341 but different values
     uint16_t t;
     
     switch (rotation) {
@@ -819,17 +846,17 @@ uint16_t Adafruit_TFTLCD::readPixel(int16_t x, int16_t y) {
     switch(rotation) {
      case 1:
       t = x;
-      x = TFTWIDTH  - 1 - y;
+      x = _w  - 1 - y;
       y = t;
       break;
      case 2:
-      x = TFTWIDTH  - 1 - x;
-      y = TFTHEIGHT - 1 - y;
+      x = _w  - 1 - x;
+      y = _h - 1 - y;
       break;
      case 3:
       t = x;
       x = y;
-      y = TFTHEIGHT - 1 - t;
+      y = _h - 1 - t;
       break;
     }
     writeRegister16(0x0020, x);

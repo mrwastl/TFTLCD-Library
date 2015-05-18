@@ -23,8 +23,8 @@ class Adafruit_TFTLCD : public Adafruit_GFX {
 
  public:
 
-  Adafruit_TFTLCD(uint8_t cs, uint8_t cd, uint8_t wr, uint8_t rd, uint8_t rst);
-  Adafruit_TFTLCD(void);
+  Adafruit_TFTLCD(uint8_t cs, uint8_t cd, uint8_t wr, uint8_t rd, uint8_t rst, int16_t w = 240, int16_t h = 320);
+  Adafruit_TFTLCD(int16_t w = 240, int16_t h = 320);
 
   void     begin(uint16_t id = 0x9325);
   void     drawPixel(int16_t x, int16_t y, uint16_t color);
@@ -46,6 +46,8 @@ class Adafruit_TFTLCD : public Adafruit_GFX {
   uint32_t readReg(uint8_t r);
 
  private:
+  int16_t  _w;
+  int16_t  _h;
 
   void     init(),
            // These items may have previously been defined as macros
@@ -92,6 +94,12 @@ class Adafruit_TFTLCD : public Adafruit_GFX {
 	uint32_t          csPinSet  ,  cdPinSet  ,  wrPinSet  ,  rdPinSet  ,
 					  csPinUnset,  cdPinUnset,  wrPinUnset,  rdPinUnset,
 					  _reset;
+  #endif
+  #if defined(__MK20DX128__) || defined(__MK20DX256__)
+    volatile uint8_t *csPort    , *cdPort    , *wrPort    , *rdPort;
+  uint8_t           csPinSet  ,  cdPinSet  ,  wrPinSet  ,  rdPinSet  ,
+            csPinUnset,  cdPinUnset,  wrPinUnset,  rdPinUnset,
+            _reset;
   #endif
   
 #endif
